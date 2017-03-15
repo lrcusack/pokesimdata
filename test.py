@@ -1,8 +1,9 @@
-
+from pokedatasim import Pokemon
+from pokedatasim import Trainer
 import pandas as pd
-import numpy as np
-from PokemonClass import Pokemon
-from TrainerClass import Trainer
+#import numpy as np
+
+print("imports complete")
 
 """
 # test typeModifierTable load
@@ -40,7 +41,7 @@ printHitPoints(bulba)
 printHitPoints(bulba2)
 """
 
-"""
+
 # Test trainer construction and interaction, plus reset
 b1 = Pokemon("Bulbasaur1","Grass","Poison",45,49,49,65,65,45)
 b2 = Pokemon("Bulbasaur2","Grass","Poison",45,49,49,65,65,45)
@@ -91,4 +92,9 @@ if btrainer.fight(strainer) :
     print ("b won")
 else :
     print ("s won")
-"""
+
+
+
+#test pokemon table load
+poketable = pd.read_table("Pokemon.csv",sep=",")
+print (poketable)
