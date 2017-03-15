@@ -1,13 +1,13 @@
-import itertools
+import itertools as it
 import pandas as pd
 import numpy as np
 
-# load type modifier table
+# load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm
 tmt = pd.read_table("type_modifiers.csv", index_col = 0,sep=",")
 
 class Pokemon :
     """ This class defines a Pokemon """
-    newid = itertools.count()
+    newid = it.count()
     standardLevel = 50
     standardAttackPower = 30
     typeModifierTable = tmt
@@ -39,6 +39,7 @@ class Pokemon :
             if t != "" :
                 self.type.append(t)
         self.hp = hp
+        self.maxhp = hp
         self.attack = attack
         self.defense = defense
         self.spatk = spatk
@@ -55,8 +56,12 @@ class Pokemon :
         """apply damage, make sure lowest hp is 0"""
         self.hp = max(0,self.hp-damage)
 
+    def recover(self) :
+        self.hp = self.maxhp
+
     @staticmethod
     def damageEquation(A,B,C,D,X,Y,Z) :
+        """This algorithm is based on https://www.math.miami.edu/~jam/azure/compendium/battdam.htm"""
         return int(int(int(int(int(int(int(int(int(int(2*A/5 + 2) * B)*C) / D) / 50)+2)*X)*Y)*Z)/255)
 
     def calculateDamage(self,otherPokemon) :
@@ -101,11 +106,12 @@ class Pokemon :
             print("Damage: " + str(damage[idx]))
             """
 
+
         # Add entry for non-same-type physical attack
-        X = 1
+        X = 1 # no STAB
         B = self.attack #attack score
         D = otherPokemon.defense # defense score
-        Y = 1
+        Y = 1 # no type modifier
         defaultDamage = Pokemon.damageEquation(A,B,C,D,X,Y,Z)
         damage.append(defaultDamage)
         """
@@ -124,5 +130,12 @@ class Pokemon :
 
     def doAttack(self,otherPokemon) :
         """This pokemon attacks otherPokemon"""
+        #print(self.name + " is attacking " + otherPokemon.name)
         damage = self.calculateDamage(otherPokemon)
         otherPokemon.takeDamage(damage)
+        """
+        print(self.name + " attacks " + otherPokemon.name + " for " + str(damage) + " damage")
+        if otherPokemon.isKO() :
+            print(self.name + " is knocked out!")
+        """
+        return damage
