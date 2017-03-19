@@ -1,20 +1,21 @@
-import itertools as it
 import pandas as pd
 import numpy as np
+import sqlite3
 
-# load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm
-tmt = pd.read_table("type_modifiers.csv", index_col = 0,sep=",")
+# load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm, with added fields for Dark, Steel and Fairy
+db = sqlite3.connect("pokedex.sqlite")
+tmt = pd.read_sql_query("SELECT * FROM TypeModifier", db, index_col="index")
 
 class Pokemon :
     """ This class defines a Pokemon """
-    newid = it.count()
     standardLevel = 50
     standardAttackPower = 30
     typeModifierTable = tmt
 
     specialTypes = ['Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Psychic']
     physicalTypes = ['Normal', 'Fighting', 'Flying', 'Ground',
-        'Rock', 'Bug', 'Poison', 'Ghost', 'Dragon']
+        'Rock', 'Bug', 'Poison', 'Ghost', 'Dragon','Dark','Steel',"Fairy"]
+    allTypes = set(specialTypes + physicalTypes)
 
 
     def __init__(self, name, type1, type2, hp,
@@ -33,11 +34,8 @@ class Pokemon :
         speed -- speed stat
         """
         self.name = name
-        types = set([type1, type2])
-        self.type = []
-        for t in types :
-            if t != "" :
-                self.type.append(t)
+        #print("Name =", name, "| Type1 =",type1,type(type1),"| Type2 =",type2,type(type2))
+        self.type = [x for x in [type1,type2] if x in self.allTypes];
         self.hp = hp
         self.maxhp = hp
         self.attack = attack
@@ -46,11 +44,60 @@ class Pokemon :
         self.spdef = spdef
         self.speed = speed
         self.level = Pokemon.standardLevel
-        self.id = next(Pokemon.newid)
+
+    @classmethod
+    def fromDataFrame(cls,poketable):
+        """Create a list of pokemon from a dataframe describing the pokemon
+        this function does not work if you want to repeat pokemon..."""
+        pokemonlist = []
+        if isinstance(poketable,list):
+            for i in poketable.index:
+                name = poketable.name[i]
+                type1 = poketable.type1[i]
+                type2 = poketable.type2[i]
+                hp = poketable.hp[i]
+                attack = poketable.attack[i]
+                defense = poketable.defense[i]
+                spatk = poketable.spatk[i]
+                spdef = poketable.spdef[i]
+                speed = poketable.speed[i]
+        else:
+            poketable = poketable.to_dict()
+            name = poketable["name"]
+            type1 = poketable["type1"]
+            if "type2" in poketable:
+                type2 = poketable["type2"]
+            hp = poketable["hp"]
+            attack = poketable["attack"]
+            defense = poketable["defense"]
+            spatk = poketable["spatk"]
+            spdef = poketable["spdef"]
+            speed = poketable["speed"]
+        pokemonlist.append(cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed))
+        if len(pokemonlist) == 1:
+            return pokemonlist[0]
+        else:
+            return pokemonlist
+    @classmethod
+    def createPokemonGenerator(cls,pokemon_table):
+        """This returns a function that takes a list of (possibly non-unique) indices for the given poketable and returns a list of those pokemon"""
+        return lambda x: [cls.fromDataFrame(pokemon_table.loc[i]) for i in x]
 
     def isKO(self) :
         """Returns true if this pokemon is knocked out, false otherwise"""
         return self.hp == 0
+
+    def deterministicallyInferior(self, other):
+        """If this pokemon has the same types and strictly lower stats, return true"""
+        return \
+            ((set(self.type) == set(other.type))
+             and (self.maxhp < other.maxhp)
+             and (self.attack < other.attack)
+             and (self.defense < other.defense)
+             and (self.spatk < other.spatk)
+             and (self.spdef < other.spdef)
+             and (self.speed < other.speed))
+
 
     def takeDamage(self, damage) :
         """apply damage, make sure lowest hp is 0"""
@@ -83,7 +130,8 @@ class Pokemon :
             Y = 1
             for defenseType in otherPokemon.type :
                 # lookup type modifier
-                Y = Y * Pokemon.typeModifierTable[defenseType][attackType]
+                thisModifier = Pokemon.typeModifierTable[defenseType][attackType]
+                Y = Y * thisModifier
 
             # if this attack type is a physical attack, use attack stat
             if not set(Pokemon.specialTypes).intersection(attackType) :
@@ -140,23 +188,17 @@ class Pokemon :
         """
         return damage
 
+
 class Trainer :
     """ This class defines a Trainer """
-    newid = it.count()
 
-    def __init__(self, p1,p2,p3,p4,p5,p6) :
+    def __init__(self, pokemon) :
         """ Construct a Trainer
 
         Keyword arguments:
-        p1 -- first pokemon
-        p2 -- second pokemon
-        p3 -- third pokemon
-        p4 -- fourth pokemon
-        p5 -- fifth pokemon
-        p6 -- sixth pokemon
+        pokemon -- list of Pokemon objects
         """
-        self.pokemon = [p1,p2,p3,p4,p5,p6]
-        self.id = next(Trainer.newid)
+        self.pokemon = pokemon
         self.activePokemonIdx = 0
 
     def chooseNextPokemon(self) :
