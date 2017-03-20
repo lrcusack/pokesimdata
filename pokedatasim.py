@@ -5,6 +5,7 @@ import sqlite3
 # load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm, with added fields for Dark, Steel and Fairy
 db = sqlite3.connect("pokedex.sqlite")
 tmt = pd.read_sql_query("SELECT * FROM TypeModifier", db, index_col="index")
+db.close()
 
 class Pokemon :
     """ This class defines a Pokemon """
