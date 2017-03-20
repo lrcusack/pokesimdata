@@ -1,5 +1,6 @@
 from pokedatasim import Pokemon
 from pokedatasim import Trainer
+from pokedatasim import BigFullFactorial
 import pandas as pd
 import numpy as np
 import sqlite3
@@ -216,5 +217,10 @@ t2.reset()
 print(t2.fight(t1))
 """
 
-
+"""
 #test hashing
+x = BigFullFactorial([4,2,3])
+print(x.getCaseFromIndex(1))
+print(x.getCaseFromIndex(8))
+print(x.getCaseFromIndex(23))
+"""
