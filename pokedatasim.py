@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-from functools import reduce
-from operator import mul
+from copy import deepcopy
 import sqlite3
 
 # load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm, with added fields for Dark, Steel and Fairy
@@ -15,22 +14,30 @@ class BigFullFactorial:
 
     def __init__(self, levels):
         self.levels = levels
-        self.maxidx = reduce(mul,self.levels,1)
+        self.idxrange = range(np.prod(levels))
 
     def getCaseFromIndex(self, idx):
-        if idx not in range(self.maxidx):
+        """Method for defining cases based on an index
+        like a de-hash function"""
+        if idx not in self.idxrange:
             return None
         remainder = idx
         case = []
         for i in range(len(self.levels)):
-            divisor = reduce(mul, self.levels[i:], 1) / self.levels[i]
+            divisor = np.prod(self.levels[i:]) / self.levels[i]
             case.append(int(remainder // divisor))
             remainder = remainder % divisor
         return case
 
     def getIndexFromCase(self, case):
-        """Not implemented, probably not all that useful anyway..."""
-        pass
+        """Method for defining an index for a given case
+        like a hash function"""
+        resultIdx = 0
+        for idx in range(len(case)):
+            if case[idx] not in range(self.levels[idx]):
+                return None
+            resultIdx += case[idx] * np.prod(self.levels[idx:]) / self.levels[idx]
+        return int(resultIdx)
 
 
 class Pokemon:
@@ -76,7 +83,7 @@ class Pokemon:
         """Create a list of pokemon from a dataframe describing the pokemon
         this function does not work if you want to repeat pokemon..."""
         pokemonlist = []
-        if isinstance(poketable, list):
+        if isinstance(poketable,pd.DataFrame):
             for i in poketable.index:
                 name = poketable.name[i]
                 type1 = poketable.type1[i]
@@ -87,6 +94,7 @@ class Pokemon:
                 spatk = poketable.spatk[i]
                 spdef = poketable.spdef[i]
                 speed = poketable.speed[i]
+                pokemonlist.append(cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed))
         else:
             poketable = poketable.to_dict()
             name = poketable["name"]
@@ -99,16 +107,15 @@ class Pokemon:
             spatk = poketable["spatk"]
             spdef = poketable["spdef"]
             speed = poketable["speed"]
-        pokemonlist.append(cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed))
-        if len(pokemonlist) == 1:
-            return pokemonlist[0]
-        else:
-            return pokemonlist
+            pokemonlist = cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed)
+        return pokemonlist
 
     @classmethod
     def createPokemonGenerator(cls, pokemon_table):
-        """This returns a function that takes a list of (possibly non-unique) indices for the given poketable and returns a list of those pokemon"""
+        """This returns a function that takes a list of (possibly non-unique) indices for the given poketable
+        returns a list of those pokemon"""
         return lambda x: [cls.fromDataFrame(pokemon_table.loc[i]) for i in x]
+
 
     def isKO(self):
         """Returns true if this pokemon is knocked out, false otherwise"""
@@ -289,3 +296,72 @@ class Trainer:
             return True
         else:
             return False
+
+def clearDatabaseTables(db,tablenames):
+    cursor = db.cursor()
+    for tn in tablenames:
+        cursor.execute("SELECT * FROM sqlite_master WHERE type='table' and name=?", (tn,))
+        if cursor.fetchone():
+            cursor.execute("DROP TABLE ?",(tn,))
+
+
+class PokeDataSimulation:
+    def __init__(self,simname = "", pokemonIndices=[2,6,11], nPokemonTeam=1, dbname = "pokedex.sqlite"):
+        if simname == "":
+            self.simname = "Sim_" + len(pokemonIndices) + "pokemon_" + nPokemonTeam + "perteam";
+        else:
+            self.simname = simname
+        self.indexlookuptablename = self.simname+"_indexLookup"
+        self.resultstablename = self.simname + "_results"
+
+        self.dbname = dbname
+        db = sqlite3.connect(self.dbname)
+        cursor = db.cursor()
+        sql = ["DROP TABLE IF EXISTS " + self.indexlookuptablename,
+                "DROP TABLE IF EXISTS " + self.resultstablename,
+                "CREATE TABLE " + self.resultstablename + " (caseidx int, result bool)"]
+        for s in sql:
+            cursor.execute(s)
+        poketable = pd.read_sql_query("SELECT * FROM Pokemon", db, index_col="index")
+
+        self.pokemonIndices = pokemonIndices
+        indexLookup = pd.DataFrame(self.pokemonIndices,columns=["PokemonIdx"])
+        indexLookup.to_sql(self.indexlookuptablename,db,index_label="FactorialIdx")
+
+        self.experiment = BigFullFactorial([len(pokemonIndices)]*nPokemonTeam*2)
+        self.nPokemonTeam = nPokemonTeam
+        self.pokegen = Pokemon.createPokemonGenerator(poketable)
+        db.commit()
+        db.close()
+
+    def runCase(self,caseidx):
+        case = self.experiment.getCaseFromIndex(caseidx)
+        caset1 = case[:self.nPokemonTeam]
+        caset2 = case[self.nPokemonTeam:]
+        if np.array_equal(caset1, caset2):
+            return #trainer 1 == trainer 2, no point in running
+        elif self.experiment.getIndexFromCase(caset2+caset1) < caseidx:
+            return # Trainer 2 vs trainer 1 has already been simulated
+        else :
+            t1 = Trainer(self.pokegen(caset1))
+            t2 = Trainer(self.pokegen(caset2))
+            if t1.fight(t2):
+                result = 1
+            else:
+                result = 0
+            sqlstring = "INSERT INTO " + self.resultstablename + " VALUES (" + str(caseidx) + "," + str(result) + ")"
+            print(sqlstring)
+            db = sqlite3.connect(self.dbname)
+            cursor = db.cursor()
+            cursor.execute(sqlstring)
+            db.commit()
+            db.close()
+
+    def runSimulation(self):
+        for i in self.experiment.idxrange:
+            self.runCase(i)
+
+
+
+
+

@@ -1,6 +1,7 @@
 from pokedatasim import Pokemon
 from pokedatasim import Trainer
 from pokedatasim import BigFullFactorial
+from pokedatasim import PokeDataSimulation
 import pandas as pd
 import numpy as np
 import sqlite3
@@ -211,6 +212,9 @@ pokemon = [Pokemon.fromDataFrame(poketable.loc[x]) for x in pokemonIndices1]
 t1 = Trainer(pokegen(pokemonIndices1))
 t2 = Trainer(pokegen(pokemonIndices2))
 
+print([str(p.name) for p in t1.pokemon])
+print([str(p.name) for p in t2.pokemon])
+
 print(t1.fight(t2))
 t1.reset()
 t2.reset()
@@ -223,4 +227,33 @@ x = BigFullFactorial([4,2,3])
 print(x.getCaseFromIndex(1))
 print(x.getCaseFromIndex(8))
 print(x.getCaseFromIndex(23))
+print(x.getIndexFromCase(x.getCaseFromIndex(1)))
+print(x.getIndexFromCase(x.getCaseFromIndex(8)))
+print(x.getIndexFromCase(x.getCaseFromIndex(23)))
 """
+
+"""
+#testing lambdas
+values = ["a","b","c","c"]
+indices = [5,7,2,2]
+indextuples = enumerate(indices)
+indexlookup = lambda x: [prototypeIdx \
+                                 for prototypeIdx, pokemonIdx in indextuples if pokemonIdx == x].pop()
+print(indexlookup(7))
+"""
+
+pds = PokeDataSimulation("test")
+pds.runSimulation()
+
+db = sqlite3.connect("pokedex.sqlite")
+resultstable = pd.read_sql_query("SELECT * FROM test_results", db,index_col="caseidx")
+print(resultstable)
+indexlookup = pd.read_sql_query("SELECT * FROM test_indexLookup", db,index_col="FactorialIdx")
+print(indexlookup)
+
+
+for i in resultstable.index:
+    case = pds.experiment.getCaseFromIndex(i)
+    middle = int(len(case)/2)
+    print([pds.pokegen([pds.pokemonIndices[case[c]]])[0].name for c in case[:middle]],\
+          'vs', [pds.pokegen([pds.pokemonIndices[case[c]]])[0].name for c in case[middle:]])
