@@ -10,7 +10,7 @@ class TestPokemonClass(unittest.TestCase):
     def checkPokemon(self, pokemonobjects, pokemonnames):
         if not isinstance(pokemonobjects, list):
             pokemonobjects = [pokemonobjects]
-        if not isinstance(pokemonnames,list):
+        if not isinstance(pokemonnames, list):
             pokemonnames = [pokemonnames]
         for idx, p in enumerate(pokemonobjects):
             with self.subTest(i=idx):
@@ -21,12 +21,12 @@ class TestPokemonClass(unittest.TestCase):
         name = "Bulbasaur"
         type1 = "Grass"
         type2 = "Poison"
-        hp = 45 # should become 149
-        attack = 49 # should become 98
-        defense = 49 # should become 98
-        spatk = 65 # should become 114
-        spdef = 65 # should become 114
-        speed = 45 # should become 94
+        hp = 45  # should become 149
+        attack = 49  # should become 98
+        defense = 49  # should become 98
+        spatk = 65  # should become 114
+        spdef = 65  # should become 114
+        speed = 45  # should become 94
         bulba = Pokemon(name, type1, type2, hp, attack, defense, spatk, spdef, speed)
         self.checkPokemon(bulba, "Bulbasaur")
         self.assertEqual(bulba.type, ["Grass", "Poison"])
@@ -42,17 +42,17 @@ class TestPokemonClass(unittest.TestCase):
         db = sqlite3.connect('pokedex.sqlite')
         poketable = pd.read_sql_query("SELECT * FROM Pokemon", db, index_col="index")
         pikachuindex = 30  # pikachu
-        vcbIndices = [2, 6, 11]  # Venusaur, Charizard, Blastoise
+        vcb_indices = [2, 6, 11]  # Venusaur, Charizard, Blastoise
         checklist = ['Venusaur', 'Charizard', 'Blastoise']
-        fullpokegen = Pokemon.createPokemonGenerator(poketable)
-        cutpokegen = Pokemon.createPokemonGenerator(poketable.iloc[vcbIndices + [pikachuindex]])
+        fullpokegen = Pokemon.create_pokemon_generator(poketable)
+        cutpokegen = Pokemon.create_pokemon_generator(poketable.iloc[vcb_indices + [pikachuindex]])
 
         # test single row creation from Data frame
-        pikachu = Pokemon.fromDataFrame(poketable.iloc[pikachuindex])
+        pikachu = Pokemon.from_data_frame(poketable.iloc[pikachuindex])
         self.checkPokemon(pikachu, "Pikachu")
 
         # test multi row creation from data frame
-        vcb = Pokemon.fromDataFrame(poketable.iloc[vcbIndices])
+        vcb = Pokemon.from_data_frame(poketable.iloc[vcb_indices])
         self.assertIsInstance(vcb, list)
         self.checkPokemon(vcb, checklist)
 
@@ -61,7 +61,7 @@ class TestPokemonClass(unittest.TestCase):
         self.checkPokemon(pikachufullgen, "Pikachu")
 
         # test multi row pokegen with full df
-        vcbfullgen = fullpokegen(vcbIndices)
+        vcbfullgen = fullpokegen(vcb_indices)
         self.assertIsInstance(vcbfullgen, list)
         self.checkPokemon(vcbfullgen, checklist)
 
@@ -70,7 +70,7 @@ class TestPokemonClass(unittest.TestCase):
         self.checkPokemon(pikachucutgen, "Pikachu")
 
         # test multi row pokegen with cut df
-        vcbcutgen = cutpokegen(vcbIndices)
+        vcbcutgen = cutpokegen(vcb_indices)
         self.assertIsInstance(vcbcutgen, list)
         self.checkPokemon(vcbcutgen, checklist)
 
@@ -83,38 +83,38 @@ class TestPokemonClass(unittest.TestCase):
         # test damage
         orighp = b.hp
         damage = 15
-        b.takeDamage(damage)
+        b.take_damage(damage)
         self.assertEqual(b.hp, orighp - damage)
 
-        # test isKO
+        # test is_ko
         b.hp = 0
-        self.assertTrue(b.isKO())
+        self.assertTrue(b.is_ko())
 
         # test recover
         b.recover()
         self.assertEqual(b.hp, b.maxhp)
 
         # test inferior
-        self.assertTrue(inferiorb.deterministicallyInferiorTo(b))
+        self.assertTrue(inferiorb.deterministically_inferior_to(b))
 
         # test damage (numbers from azure heights lab battle damage calculator
         # bulbasaur attacks charmander 22
-        self.assertEqual(b.doAttack(c), 22)
+        self.assertEqual(b.do_attack(c), 22)
         # bulbasaur attacks squirtle 41
-        self.assertEqual(b.doAttack(s), 41)
+        self.assertEqual(b.do_attack(s), 41)
         # charmander attacks bulbasaur 39
-        self.assertEqual(c.doAttack(b), 39)
+        self.assertEqual(c.do_attack(b), 39)
 
         b.recover()
         s.recover()
         c.recover()
 
         # charmander attacks squirtle 11
-        self.assertEqual(c.doAttack(s), 11)
+        self.assertEqual(c.do_attack(s), 11)
         # squirtle attacks bulbasaur 14
-        self.assertEqual(s.doAttack(b), 14)
+        self.assertEqual(s.do_attack(b), 14)
         # squirtle attacks charmander 15
-        self.assertEqual(s.doAttack(c), 15)
+        self.assertEqual(s.do_attack(c), 15)
 
 
 class TestTrainerClass(unittest.TestCase):
@@ -135,23 +135,23 @@ class TestTrainerClass(unittest.TestCase):
 
         # test select next conscious pokemon
         t = Trainer([b, c, s])
-        t.pokemon[0].hp = 0 # knock out first pokemon
-        t.chooseNextPokemon()
-        self.assertEqual(t.activePokemonIdx, 1)
+        t.pokemon[0].hp = 0  # knock out first pokemon
+        t.choose_next_pokemon()
+        self.assertEqual(t.active_pokemon_idx, 1)
 
-        # test activePokemon
-        self.assertEqual(t.activePokemon().name,"Charmander")
+        # test active_pokemon
+        self.assertEqual(t.active_pokemon().name, "Charmander")
 
         # test that -1 is returned if all pokemon are KOed
         for p in t.pokemon:
             p.hp = 0
-        t.chooseNextPokemon()
-        self.assertEqual(t.activePokemonIdx,-1)
+        t.choose_next_pokemon()
+        self.assertEqual(t.active_pokemon_idx, -1)
 
         # test reset
         t.reset()
-        self.assertEqual(t.activePokemonIdx, 0)
-        self.assertEqual(t.activePokemon().hp, t.activePokemon().maxhp)
+        self.assertEqual(t.active_pokemon_idx, 0)
+        self.assertEqual(t.active_pokemon().hp, t.active_pokemon().maxhp)
 
     def test_battlemechanics(self):
         bs = []
@@ -166,11 +166,11 @@ class TestTrainerClass(unittest.TestCase):
         strainer = Trainer(ss)
 
         # test correct order, whoever has higher speed will attack first and KO opponent
-        ctrainer.activePokemon().hp = 1
-        btrainer.activePokemon().hp = 1
-        ctrainer.takeTurn(btrainer)
-        self.assertEqual(btrainer.activePokemonIdx,1)
-        self.assertEqual(ctrainer.activePokemonIdx,0)
+        ctrainer.active_pokemon().hp = 1
+        btrainer.active_pokemon().hp = 1
+        ctrainer.take_turn(btrainer)
+        self.assertEqual(btrainer.active_pokemon_idx, 1)
+        self.assertEqual(ctrainer.active_pokemon_idx, 0)
 
         # test type effectiveness (sanity check)
         ctrainer.reset()
@@ -186,7 +186,7 @@ class TestTrainerClass(unittest.TestCase):
 
 class TestWorkerFunctions(unittest.TestCase):
     """This class tests the Big Factorial Class"""
-    samplelevels = [[4, 2, 3],[2, 2],[3, 3, 3],[2, 5, 4]]
+    samplelevels = [[4, 2, 3], [2, 2], [3, 3, 3], [2, 5, 4]]
 
     @staticmethod
     def standardFullFact(levels):
@@ -211,7 +211,7 @@ class TestWorkerFunctions(unittest.TestCase):
         for levels in self.samplelevels:
             with self.subTest(i=levels):
                 bff = BigFullFactorial(levels)
-                bff_cases = [bff.getCaseFromIndex(i) for i in bff.idxrange]
+                bff_cases = [bff.get_case_from_index(i) for i in bff.idxrange]
                 sff_cases = self.standardFullFact(levels)
 
                 # check that standard full factorial and big full factorial are identical
@@ -219,15 +219,15 @@ class TestWorkerFunctions(unittest.TestCase):
                     self.assertTrue(bffc in sff_cases)
                     sff_cases.remove(bffc)
 
-                # check that getIndexFromCase and getCaseFromIndex are inverse
+                # check that get_index_from_case and get_case_from_index are inverse
                 for idx in bff.idxrange:
-                    self.assertEqual(bff.getIndexFromCase(bff.getCaseFromIndex(idx)), idx)
+                    self.assertEqual(bff.get_index_from_case(bff.get_case_from_index(idx)), idx)
 
     def test_db_loading(self):
         # test load poketable
         poketable = load_pokemon_table_from_db()
         self.assertEqual(list(poketable), ['num', 'name', 'type1', 'type2', 'total', 'hp', 'attack', 'defense',
-                                          'spatk', 'spdef', 'speed', 'generation', 'legendary'])
+                                           'spatk', 'spdef', 'speed', 'generation', 'legendary'])
         self.assertEqual(len(poketable), 800)
 
         # test load type modifier table
@@ -251,7 +251,7 @@ print(indexlookup)
 
 
 for i in resultstable.index:
-    case = pds.experiment.getCaseFromIndex(i)
+    case = pds.experiment.get_case_from_index(i)
     middle = int(len(case)/2)
     print([pds.pokegen([pds.pokemonIndices[case[c]]])[0].name for c in case[:middle]],\
           'vs', [pds.pokegen([pds.pokemonIndices[case[c]]])[0].name for c in case[middle:]])

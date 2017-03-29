@@ -1,7 +1,11 @@
 import pandas as pd
 import numpy as np
-from copy import deepcopy
 import sqlite3
+import logging
+
+DEBUG = 10
+INFO = 20
+logging.basicConfig(level=DEBUG)
 
 
 def load_type_modifier_table_from_db():
@@ -11,6 +15,7 @@ def load_type_modifier_table_from_db():
     tmt = pd.read_sql_query("SELECT * FROM TypeModifier", db, index_col="index")
     db.close()
     return tmt
+
 
 def load_pokemon_table_from_db():
     """load pokemon table from kaggle dataset"""
@@ -27,7 +32,7 @@ class BigFullFactorial:
         self.levels = levels
         self.idxrange = range(np.prod(levels))
 
-    def getCaseFromIndex(self, idx):
+    def get_case_from_index(self, idx):
         """Method for defining cases based on an index
         like a de-hash function"""
         if idx not in self.idxrange:
@@ -37,26 +42,28 @@ class BigFullFactorial:
         for i in range(len(self.levels)):
             divisor = np.prod(self.levels[i:]) / self.levels[i]
             case.append(int(remainder // divisor))
-            remainder = remainder % divisor
+            remainder %= divisor
         return case
 
-    def getIndexFromCase(self, case):
+    def get_index_from_case(self, case):
         """Method for defining an index for a given case
         like a hash function"""
-        resultIdx = 0
+        result_idx = 0
         for idx in range(len(case)):
             if case[idx] not in range(self.levels[idx]):
                 return None
-            resultIdx += case[idx] * np.prod(self.levels[idx:]) / self.levels[idx]
-        return int(resultIdx)
+            result_idx += case[idx] * np.prod(self.levels[idx:]) / self.levels[idx]
+        return int(result_idx)
 
 
 class Pokemon:
     """ This class defines a Pokemon """
     standardLevel = 50
     standardAttackPower = 30
-    standardIV = 15 # average from genIII up on http://bulbapedia.bulbagarden.net/wiki/Individual_values
-    standardEV = round(510/6) # even distribution of EV across stats from http://bulbapedia.bulbagarden.net/wiki/Effort_values
+    # average from genIII up on http://bulbapedia.bulbagarden.net/wiki/Individual_values
+    standardIV = 15
+    # even distribution of EV across stats from http://bulbapedia.bulbagarden.net/wiki/Effort_values
+    standardEV = round(510/6)
     typeModifierTable = load_type_modifier_table_from_db()
 
     specialTypes = ['Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Psychic']
@@ -65,7 +72,7 @@ class Pokemon:
     allTypes = set(specialTypes + physicalTypes)
 
     @classmethod
-    def calculateStat(cls, statbase, level=None, iv=None, ev=None, statname=''):
+    def calculate_stat(cls, statbase, level=None, iv=None, ev=None, statname=''):
         if not level:
             level = cls.standardLevel
         if not iv:
@@ -97,13 +104,13 @@ class Pokemon:
         self.name = name
         # print("Name =", name, "| Type1 =",type1,type(type1),"| Type2 =",type2,type(type2))
         self.type = [x for x in [type1, type2] if x in self.allTypes]
-        self.maxhp = Pokemon.calculateStat(hp, statname='hp')
+        self.maxhp = Pokemon.calculate_stat(hp, statname='hp')
         self.hp = self.maxhp
-        self.attack = Pokemon.calculateStat(attack)
-        self.defense = Pokemon.calculateStat(defense)
-        self.spatk = Pokemon.calculateStat(spatk)
-        self.spdef = Pokemon.calculateStat(spdef)
-        self.speed = Pokemon.calculateStat(speed)
+        self.attack = Pokemon.calculate_stat(attack)
+        self.defense = Pokemon.calculate_stat(defense)
+        self.spatk = Pokemon.calculate_stat(spatk)
+        self.spdef = Pokemon.calculate_stat(spdef)
+        self.speed = Pokemon.calculate_stat(speed)
         self.level = Pokemon.standardLevel
 
     def __str__(self):
@@ -115,7 +122,7 @@ class Pokemon:
         return str(self)
 
     @classmethod
-    def fromDataFrame(cls, poketable):
+    def from_data_frame(cls, poketable):
         """Create a list of pokemon from a dataframe describing the pokemon
         this function does not work if you want to repeat pokemon..."""
         pokemonlist = []
@@ -137,6 +144,8 @@ class Pokemon:
             type1 = poketable["type1"]
             if "type2" in poketable:
                 type2 = poketable["type2"]
+            else:
+                type2 = ''
             hp = poketable["hp"]
             attack = poketable["attack"]
             defense = poketable["defense"]
@@ -147,18 +156,17 @@ class Pokemon:
         return pokemonlist
 
     @classmethod
-    def createPokemonGenerator(cls, pokemon_table):
+    def create_pokemon_generator(cls, pokemon_table):
         """This returns a function that takes a list of (possibly non-unique) indices for the given poketable
         returns a list of those pokemon"""
-        return lambda x: [cls.fromDataFrame(pokemon_table.loc[i]) for i in x] if isinstance(x,list) \
-                else cls.fromDataFrame(pokemon_table.loc[x])
+        return lambda x: [cls.from_data_frame(pokemon_table.loc[i]) for i in x] if isinstance(x, list) \
+            else cls.from_data_frame(pokemon_table.loc[x])
 
-
-    def isKO(self):
+    def is_ko(self):
         """Returns true if this pokemon is knocked out, false otherwise"""
         return self.hp == 0
 
-    def deterministicallyInferiorTo(self, other):
+    def deterministically_inferior_to(self, other):
         """If this pokemon has the same types and strictly lower stats, return true"""
         return \
             ((set(self.type) == set(other.type))
@@ -169,7 +177,7 @@ class Pokemon:
              and (self.spdef < other.spdef)
              and (self.speed < other.speed))
 
-    def takeDamage(self, damage):
+    def take_damage(self, damage):
         """apply damage, make sure lowest hp is 0"""
         self.hp = max(0, self.hp - damage)
 
@@ -177,90 +185,89 @@ class Pokemon:
         self.hp = self.maxhp
 
     @staticmethod
-    def damageEquation(A, B, C, D, X, Y, Z):
+    def damage_equation(a, b, c, d, x, y, z):
         """This algorithm is based on https://www.math.miami.edu/~jam/azure/compendium/battdam.htm"""
-        return int(int(int(int(int(int(int(int(int(int(2 * A / 5 + 2) * B) * C) / D) / 50) + 2) * X) * Y) * Z) / 255)
+        return int((((((((((2 * a // 5 + 2) * b) * c) // d) // 50) + 2) * x) * y) * z) // 255)
 
-    def calculateDamage(self, otherPokemon):
-        """Calculate the damage this pokemon can do to otherPokemon"""
+    def calculate_damage(self, other_pokemon):
+        """Calculate the damage this pokemon can do to other_pokemon"""
         # Set independent values (pokemon-agnostic)
         """# use random critical hit
         if np.random.rand() < .05:
-            criticalHit = 1
+            critical_hit = 1
         else:
-            criticalHit = 0
+            critical_hit = 0
         """
         # no critical hit
-        criticalHit = 0
+        critical_hit = 0
 
-        A = self.level * (1 + criticalHit)  # level of pokemon
-        C = Pokemon.standardAttackPower  # power of attack
-        X = 1.5
+        a = self.level * (1 + critical_hit)  # level of pokemon
+        c = Pokemon.standardAttackPower  # power of attack
+        x = 1.5
         """# use true random attack value
         Z = int(217 + (255 - 217) * np.random.rand())  # random value  between 217 and 255
         """
         # use average attack value
-        Z = round((217+255)/2)
+        z = round((217+255)/2)
         damage = [0] * len(self.type)
         # calculate estimated attack score for each attack type
         for idx, attackType in enumerate(self.type):
-            # calculate type modifier Y
-            Y = 1
-            for defenseType in otherPokemon.type:
+            # calculate type modifier y
+            y = 1
+            for defenseType in other_pokemon.type:
                 # lookup type modifier
-                thisModifier = Pokemon.typeModifierTable[defenseType][attackType]
-                Y = Y * thisModifier
+                y *= Pokemon.typeModifierTable[defenseType][attackType]
 
             # if this attack type is a physical attack, use attack stat
             if not set(Pokemon.specialTypes).intersection(attackType):
-                B = self.attack  # attack score
-                D = otherPokemon.defense  # defense score
+                b = self.attack  # attack score
+                d = other_pokemon.defense  # defense score
             else:  # otherwise use special attack
-                B = self.spatk
-                D = otherPokemon.spdef
+                b = self.spatk
+                d = other_pokemon.spdef
 
             # calculate damage for this attack type
-            damage[idx] = Pokemon.damageEquation(A, B, C, D, X, Y, Z)
+            damage[idx] = Pokemon.damage_equation(a, b, c, d, x, y, z)
             """
             print("A: " + str(A))
-            print("B: " + str(B))
+            print("b: " + str(b))
             print("C: " + str(C))
-            print("D: " + str(D))
+            print("d: " + str(d))
             print("X: " + str(X))
-            print("Y: " + str(Y))
+            print("y: " + str(y))
             print("Z: " + str(Z))
             print("Damage: " + str(damage[idx]))
             """
 
         # Add entry for non-same-type physical attack
-        X = 1  # no STAB
-        B = self.attack  # attack score
-        D = otherPokemon.defense  # defense score
-        Y = 1  # no type modifier
-        defaultDamage = Pokemon.damageEquation(A, B, C, D, X, Y, Z)
-        damage.append(defaultDamage)
+        x = 1  # no STAB
+        b = self.attack  # attack score
+        d = other_pokemon.defense  # defense score
+        y = 1  # no type modifier
+        default_damage = Pokemon.damage_equation(a, b, c, d, x, y, z)
+        damage.append(default_damage)
         """
         print("A: " + str(A))
-        print("B: " + str(B))
+        print("b: " + str(b))
         print("C: " + str(C))
-        print("D: " + str(D))
+        print("d: " + str(d))
         print("X: " + str(X))
-        print("Y: " + str(Y))
+        print("y: " + str(y))
         print("Z: " + str(Z))
-        print("Damage: " + str(defaultDamage))
+        print("Damage: " + str(default_damage))
         """
 
         # return maximum damage
         return max(damage)
 
-    def doAttack(self, otherPokemon):
-        """This pokemon attacks otherPokemon"""
-        # print(self.name + " is attacking " + otherPokemon.name)
-        damage = self.calculateDamage(otherPokemon)
-        otherPokemon.takeDamage(damage)
+    def do_attack(self, other_pokemon):
+        """This pokemon attacks other_pokemon"""
+        # print(self.name + " is attacking " + other_pokemon.name)
+        damage = self.calculate_damage(other_pokemon)
+        other_pokemon.take_damage(damage)
         """
-        print(self.name + " attacks " + otherPokemon.name + " for " + str(damage) + " damage")
-        if otherPokemon.isKO() :
+        print(self.name + " attacks " + other_pokemon.name + " for " + str(damage) + " damage")
+        if other_pokemon.is_ko() :
             print(self.name + " is knocked out!")
         """
         return damage
@@ -276,20 +283,20 @@ class Trainer:
         pokemon -- list of Pokemon objects
         """
         self.pokemon = pokemon
-        self.activePokemonIdx = 0
+        self.active_pokemon_idx = 0
 
-    def chooseNextPokemon(self):
+    def choose_next_pokemon(self):
         """Select next pokemon, ignore types and strategy"""
-        self.activePokemonIdx = -1
+        self.active_pokemon_idx = -1
         for idx, p in enumerate(self.pokemon):
-            if not p.isKO():
-                self.activePokemonIdx = idx
+            if not p.is_ko():
+                self.active_pokemon_idx = idx
                 break
 
-    def activePokemon(self):
+    def active_pokemon(self):
         """Return trainer's active pokemon"""
-        if self.activePokemonIdx >= 0:
-            return self.pokemon[self.activePokemonIdx]
+        if self.active_pokemon_idx >= 0:
+            return self.pokemon[self.active_pokemon_idx]
         else:
             return
 
@@ -297,97 +304,98 @@ class Trainer:
         """restore all trainer's pokemons' health"""
         for p in self.pokemon:
             p.recover()
-        self.activePokemonIdx = 0
+        self.active_pokemon_idx = 0
 
-    def takeTurn(self, opponentTrainer):
+    def take_turn(self, opponent_trainer):
         """ Process one 'turn' of pokemon battle """
-        trainers = [self, opponentTrainer]
+        trainers = [self, opponent_trainer]
         # Compare speed of this trainer's active pokemon and opponent's
-        if trainers[0].activePokemon().speed > trainers[1].activePokemon().speed:
+        if trainers[0].active_pokemon().speed > trainers[1].active_pokemon().speed:
             order = [0, 1]
-        elif trainers[0].activePokemon().speed < trainers[1].activePokemon().speed:
+        elif trainers[0].active_pokemon().speed < trainers[1].active_pokemon().speed:
             order = [1, 0]
         else:
             # choose randomly
             x = int(round(np.random.rand()))
             order = [x, 1 - x]
         # in speed order, attack, check if there was a KO, and select next pokemon if there is
-        trainers[order[0]].activePokemon().doAttack(trainers[order[1]].activePokemon())
-        if trainers[order[1]].activePokemon().isKO():
-            trainers[order[1]].chooseNextPokemon()
-            if not trainers[order[1]].activePokemon():
+        trainers[order[0]].active_pokemon().do_attack(trainers[order[1]].active_pokemon())
+        if trainers[order[1]].active_pokemon().is_ko():
+            trainers[order[1]].choose_next_pokemon()
+            if not trainers[order[1]].active_pokemon():
                 return
         else:
-            trainers[order[1]].activePokemon().doAttack(trainers[order[0]].activePokemon())
-            if trainers[order[0]].activePokemon().isKO():
-                trainers[order[0]].chooseNextPokemon()
+            trainers[order[1]].active_pokemon().do_attack(trainers[order[0]].active_pokemon())
+            if trainers[order[0]].active_pokemon().is_ko():
+                trainers[order[0]].choose_next_pokemon()
 
-    def fight(self, opponentTrainer):
-        """This method fights the opponentTrainer until one trainer has no conscious pokemon
+    def fight(self, opponent_trainer):
+        """This method fights the opponent_trainer until one trainer has no conscious pokemon
         Returns True if this trainer wins and false if they lose
         """
         # while both trainers have active pokemon, take another turn
-        while self.activePokemon() and opponentTrainer.activePokemon():
+        while self.active_pokemon() and opponent_trainer.active_pokemon():
             """
             print("############################################\nNew turn\n")
-            print("Self active pokemon: " + self.activePokemon().name + " HP: " + str(self.activePokemon().hp))
-            print("Opponent active pokemon: " + opponentTrainer.activePokemon().name + " HP: " + str(opponentTrainer.activePokemon().hp))
+            print("Self active pokemon: " + self.active_pokemon().name + " HP: " + str(self.active_pokemon().hp))
+            print("Opponent active pokemon: " + opponent_trainer.active_pokemon().name + " HP: " 
+            + str(opponent_trainer.active_pokemon().hp))
             """
-            self.takeTurn(opponentTrainer)
+            self.take_turn(opponent_trainer)
             # print("Turn over \n ############################################\n")
 
         # decide winner
-        if self.activePokemon():
+        if self.active_pokemon():
             return True
         else:
             return False
 
-def clearDatabaseTables(db,tablenames):
+
+def clear_db_tables(db, tablenames):
     cursor = db.cursor()
     for tn in tablenames:
         cursor.execute("SELECT * FROM sqlite_master WHERE type='table' and name=?", (tn,))
         if cursor.fetchone():
-            cursor.execute("DROP TABLE ?",(tn,))
+            cursor.execute("DROP TABLE ?", (tn,))
 
 
 class PokeDataSimulation:
-    def __init__(self,simname = "", pokemonIndices=[2,6,11], nPokemonTeam=1, dbname = "pokedex.sqlite"):
+    def __init__(self, pokemon_indices, simname="", n_pokemon_team=1, dbname="pokedex.sqlite"):
         if simname == "":
-            self.simname = "Sim_" + len(pokemonIndices) + "pokemon_" + nPokemonTeam + "perteam";
+            self.simname = "Sim_" + str(len(pokemon_indices)) + "pokemon_" + str(n_pokemon_team) + "perteam"
         else:
             self.simname = simname
-        self.indexlookuptablename = self.simname+"_indexLookup"
+        self.index_lookuptablename = self.simname+"_index_lookup"
         self.resultstablename = self.simname + "_results"
 
         self.dbname = dbname
         db = sqlite3.connect(self.dbname)
         cursor = db.cursor()
-        sql = ["DROP TABLE IF EXISTS " + self.indexlookuptablename,
-                "DROP TABLE IF EXISTS " + self.resultstablename,
-                "CREATE TABLE " + self.resultstablename + " (caseidx int, result bool)"]
+        sql = ["DROP TABLE IF EXISTS " + self.index_lookuptablename, "DROP TABLE IF EXISTS " + self.resultstablename,
+               "CREATE TABLE " + self.resultstablename + " (caseidx int, result bool)"]
         for s in sql:
             cursor.execute(s)
         poketable = pd.read_sql_query("SELECT * FROM Pokemon", db, index_col="index")
 
-        self.pokemonIndices = pokemonIndices
-        indexLookup = pd.DataFrame(self.pokemonIndices,columns=["PokemonIdx"])
-        indexLookup.to_sql(self.indexlookuptablename,db,index_label="FactorialIdx")
+        self.pokemon_indices = pokemon_indices
+        index_lookup = pd.DataFrame(self.pokemon_indices, columns=["PokemonIdx"])
+        index_lookup.to_sql(self.index_lookuptablename, db, index_label="FactorialIdx")
 
-        self.experiment = BigFullFactorial([len(pokemonIndices)]*nPokemonTeam*2)
-        self.nPokemonTeam = nPokemonTeam
-        self.pokegen = Pokemon.createPokemonGenerator(poketable)
+        self.experiment = BigFullFactorial([len(pokemon_indices)]*n_pokemon_team*2)
+        self.n_pokemon_team = n_pokemon_team
+        self.pokegen = Pokemon.create_pokemon_generator(poketable)
         db.commit()
         db.close()
 
-    def runCase(self,caseidx):
-        case = self.experiment.getCaseFromIndex(caseidx)
-        caset1 = case[:self.nPokemonTeam]
-        caset2 = case[self.nPokemonTeam:]
+    def run_case(self, caseidx):
+        case = self.experiment.get_case_from_index(caseidx)
+        caset1 = case[:self.n_pokemon_team]
+        caset2 = case[self.n_pokemon_team:]
         if np.array_equal(caset1, caset2):
-            return #trainer 1 == trainer 2, no point in running
-        elif self.experiment.getIndexFromCase(caset2+caset1) < caseidx:
-            return # Trainer 2 vs trainer 1 has already been simulated
-        else :
+            return  # trainer 1 == trainer 2, no point in running
+        elif self.experiment.get_index_from_case(caset2+caset1) < caseidx:
+            return  # Trainer 2 vs trainer 1 has already been simulated
+        else:
             t1 = Trainer(self.pokegen(caset1))
             t2 = Trainer(self.pokegen(caset2))
             if t1.fight(t2):
@@ -402,11 +410,6 @@ class PokeDataSimulation:
             db.commit()
             db.close()
 
-    def runSimulation(self):
+    def run_simulation(self):
         for i in self.experiment.idxrange:
-            self.runCase(i)
-
-
-
-
-
+            self.run_case(i)
