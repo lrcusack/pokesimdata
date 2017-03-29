@@ -3,10 +3,21 @@ import numpy as np
 from copy import deepcopy
 import sqlite3
 
-# load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm, with added fields for Dark, Steel and Fairy
-db = sqlite3.connect("pokedex.sqlite")
-tmt = pd.read_sql_query("SELECT * FROM TypeModifier", db, index_col="index")
-db.close()
+
+def load_type_modifier_table_from_db():
+    """load type modifier table from https://www.math.miami.edu/~jam/azure/compendium/typechart.htm,
+    with added fields for Dark, Steel and Fairy"""
+    db = sqlite3.connect("pokedex.sqlite")
+    tmt = pd.read_sql_query("SELECT * FROM TypeModifier", db, index_col="index")
+    db.close()
+    return tmt
+
+def load_pokemon_table_from_db():
+    """load pokemon table from kaggle dataset"""
+    db = sqlite3.connect("pokedex.sqlite")
+    poketable = pd.read_sql_query("SELECT * FROM Pokemon", db, index_col="index")
+    db.close()
+    return poketable
 
 
 class BigFullFactorial:
@@ -44,12 +55,29 @@ class Pokemon:
     """ This class defines a Pokemon """
     standardLevel = 50
     standardAttackPower = 30
-    typeModifierTable = tmt
+    standardIV = 15 # average from genIII up on http://bulbapedia.bulbagarden.net/wiki/Individual_values
+    standardEV = round(510/6) # even distribution of EV across stats from http://bulbapedia.bulbagarden.net/wiki/Effort_values
+    typeModifierTable = load_type_modifier_table_from_db()
 
     specialTypes = ['Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Psychic']
     physicalTypes = ['Normal', 'Fighting', 'Flying', 'Ground',
                      'Rock', 'Bug', 'Poison', 'Ghost', 'Dragon', 'Dark', 'Steel', "Fairy"]
     allTypes = set(specialTypes + physicalTypes)
+
+    @classmethod
+    def calculateStat(cls, statbase, level=None, iv=None, ev=None, statname=''):
+        if not level:
+            level = cls.standardLevel
+        if not iv:
+            iv = cls.standardIV
+        if not ev:
+            ev = cls.standardEV
+        if statname == 'hp':
+            modifier = level + 10
+        else:
+            modifier = 5
+
+        return int(((2 * statbase) + iv + int(ev / 4)) * level / 100 + modifier)
 
     def __init__(self, name, type1, type2, hp,
                  attack, defense, spatk, spdef, speed):
@@ -68,22 +96,30 @@ class Pokemon:
         """
         self.name = name
         # print("Name =", name, "| Type1 =",type1,type(type1),"| Type2 =",type2,type(type2))
-        self.type = [x for x in [type1, type2] if x in self.allTypes];
-        self.hp = hp
-        self.maxhp = hp
-        self.attack = attack
-        self.defense = defense
-        self.spatk = spatk
-        self.spdef = spdef
-        self.speed = speed
+        self.type = [x for x in [type1, type2] if x in self.allTypes]
+        self.maxhp = Pokemon.calculateStat(hp, statname='hp')
+        self.hp = self.maxhp
+        self.attack = Pokemon.calculateStat(attack)
+        self.defense = Pokemon.calculateStat(defense)
+        self.spatk = Pokemon.calculateStat(spatk)
+        self.spdef = Pokemon.calculateStat(spdef)
+        self.speed = Pokemon.calculateStat(speed)
         self.level = Pokemon.standardLevel
+
+    def __str__(self):
+        return (self.name + ":" + " hp-" + str(self.hp) + " maxhp-" + str(self.maxhp) + " atk-" + str(self.attack) +
+                " def-" + str(self.defense) + " spatk-" + str(self.spatk) + " spdef-" + str(self.spdef) +
+                " speed-" + str(self.speed))
+
+    def __repr__(self):
+        return str(self)
 
     @classmethod
     def fromDataFrame(cls, poketable):
         """Create a list of pokemon from a dataframe describing the pokemon
         this function does not work if you want to repeat pokemon..."""
         pokemonlist = []
-        if isinstance(poketable,pd.DataFrame):
+        if isinstance(poketable, pd.DataFrame):
             for i in poketable.index:
                 name = poketable.name[i]
                 type1 = poketable.type1[i]
@@ -114,14 +150,15 @@ class Pokemon:
     def createPokemonGenerator(cls, pokemon_table):
         """This returns a function that takes a list of (possibly non-unique) indices for the given poketable
         returns a list of those pokemon"""
-        return lambda x: [cls.fromDataFrame(pokemon_table.loc[i]) for i in x]
+        return lambda x: [cls.fromDataFrame(pokemon_table.loc[i]) for i in x] if isinstance(x,list) \
+                else cls.fromDataFrame(pokemon_table.loc[x])
 
 
     def isKO(self):
         """Returns true if this pokemon is knocked out, false otherwise"""
         return self.hp == 0
 
-    def deterministicallyInferior(self, other):
+    def deterministicallyInferiorTo(self, other):
         """If this pokemon has the same types and strictly lower stats, return true"""
         return \
             ((set(self.type) == set(other.type))
@@ -147,15 +184,23 @@ class Pokemon:
     def calculateDamage(self, otherPokemon):
         """Calculate the damage this pokemon can do to otherPokemon"""
         # Set independent values (pokemon-agnostic)
+        """# use random critical hit
         if np.random.rand() < .05:
             criticalHit = 1
         else:
             criticalHit = 0
+        """
+        # no critical hit
+        criticalHit = 0
+
         A = self.level * (1 + criticalHit)  # level of pokemon
         C = Pokemon.standardAttackPower  # power of attack
         X = 1.5
+        """# use true random attack value
         Z = int(217 + (255 - 217) * np.random.rand())  # random value  between 217 and 255
-
+        """
+        # use average attack value
+        Z = round((217+255)/2)
         damage = [0] * len(self.type)
         # calculate estimated attack score for each attack type
         for idx, attackType in enumerate(self.type):
