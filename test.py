@@ -1,12 +1,19 @@
 from pokedatasim import *
+from loggable import Loggable
 import pandas as pd
 import numpy as np
 import sqlite3
 import unittest
+import logging
 
 
-class TestPokemonClass(unittest.TestCase):
+def dbg(msg, *args, **kwargs):
+    logging.debug(msg, *args, **kwargs)
+
+
+class TestPokemonClass(unittest.TestCase, Loggable):
     """This class tests the Pokemon class for basic functionality"""
+
     def checkPokemon(self, pokemonobjects, pokemonnames):
         if not isinstance(pokemonobjects, list):
             pokemonobjects = [pokemonobjects]
@@ -17,6 +24,7 @@ class TestPokemonClass(unittest.TestCase):
                 self.assertIsInstance(p, Pokemon)
                 self.assertEqual(p.name, pokemonnames[idx])
 
+    # @unittest.skip('Skipping Pokemon constructor Test')
     def test_constructor(self):
         name = "Bulbasaur"
         type1 = "Grass"
@@ -30,13 +38,14 @@ class TestPokemonClass(unittest.TestCase):
         bulba = Pokemon(name, type1, type2, hp, attack, defense, spatk, spdef, speed)
         self.checkPokemon(bulba, "Bulbasaur")
         self.assertEqual(bulba.type, ["Grass", "Poison"])
-        self.assertEqual(bulba.hp, 149)
-        self.assertEqual(bulba.attack, 98)
-        self.assertEqual(bulba.defense, 98)
-        self.assertEqual(bulba.spatk, 114)
-        self.assertEqual(bulba.spdef, 114)
-        self.assertEqual(bulba.speed, 94)
+        self.assertEqual(bulba.hp, 123)
+        self.assertEqual(bulba.attack, 72)
+        self.assertEqual(bulba.defense, 72)
+        self.assertEqual(bulba.spatk, 88)
+        self.assertEqual(bulba.spdef, 88)
+        self.assertEqual(bulba.speed, 68)
 
+    # @unittest.skip('Skipping Dynamic Creation Test')
     def test_dynamic_creation(self):
         # setup test variables
         db = sqlite3.connect('pokedex.sqlite')
@@ -74,6 +83,7 @@ class TestPokemonClass(unittest.TestCase):
         self.assertIsInstance(vcbcutgen, list)
         self.checkPokemon(vcbcutgen, checklist)
 
+    # @unittest.skip('Skipping battle mechanics test')
     def test_battlemechanics(self):
         b = Pokemon("Bulbasaur", "Grass", "Poison", 45, 49, 49, 65, 65, 45)
         inferiorb = Pokemon("Bulbasaur", "Grass", "Poison", 44, 48, 48, 64, 64, 44)
@@ -87,7 +97,7 @@ class TestPokemonClass(unittest.TestCase):
         self.assertEqual(b.hp, orighp - damage)
 
         # test is_ko
-        b.hp = 0
+        b.take_damage(b.hp)
         self.assertTrue(b.is_ko())
 
         # test recover
@@ -102,23 +112,24 @@ class TestPokemonClass(unittest.TestCase):
         self.assertEqual(b.do_attack(c), 22)
         # bulbasaur attacks squirtle 41
         self.assertEqual(b.do_attack(s), 41)
-        # charmander attacks bulbasaur 39
-        self.assertEqual(c.do_attack(b), 39)
+        # charmander attacks bulbasaur 38
+        self.assertEqual(c.do_attack(b), 38)
 
         b.recover()
         s.recover()
         c.recover()
 
-        # charmander attacks squirtle 11
-        self.assertEqual(c.do_attack(s), 11)
-        # squirtle attacks bulbasaur 14
-        self.assertEqual(s.do_attack(b), 14)
-        # squirtle attacks charmander 15
-        self.assertEqual(s.do_attack(c), 15)
+        # charmander attacks squirtle 12
+        self.assertEqual(c.do_attack(s), 12)
+        # squirtle attacks bulbasaur 13
+        self.assertEqual(s.do_attack(b), 13)
+        # squirtle attacks charmander 41
+        self.assertEqual(s.do_attack(c), 41)
 
 
-class TestTrainerClass(unittest.TestCase):
+class TestTrainerClass(unittest.TestCase, Loggable):
     """This class tests the Trainer class for basic functionality"""
+    # @unittest.skip('Skipping Trainer Construction Test')
     def test_constructor(self):
         b = Pokemon("Bulbasaur", "Grass", "Poison", 45, 49, 49, 65, 65, 45)
         c = Pokemon("Charmander", "Fire", "", 39, 52, 43, 60, 50, 65)
@@ -128,6 +139,7 @@ class TestTrainerClass(unittest.TestCase):
         self.assertIsInstance(t.pokemon, list)
         self.assertIsInstance(t.pokemon[0], Pokemon)
 
+    # @unittest.skip('Skipping Trainer Selection Mechanics Test')
     def test_selectionmechanics(self):
         b = Pokemon("Bulbasaur", "Grass", "Poison", 45, 49, 49, 65, 65, 45)
         c = Pokemon("Charmander", "Fire", "", 39, 52, 43, 60, 50, 65)
@@ -153,6 +165,7 @@ class TestTrainerClass(unittest.TestCase):
         self.assertEqual(t.active_pokemon_idx, 0)
         self.assertEqual(t.active_pokemon().hp, t.active_pokemon().maxhp)
 
+    # @unittest.skip('skipping trainer battle mechanics test')
     def test_battlemechanics(self):
         bs = []
         cs = []
@@ -173,18 +186,25 @@ class TestTrainerClass(unittest.TestCase):
         self.assertEqual(ctrainer.active_pokemon_idx, 0)
 
         # test type effectiveness (sanity check)
+        self.dbg('Resetting charmander and bulbasaur trainers')
         ctrainer.reset()
         btrainer.reset()
+        self.dbg('Bulbasaur trainer fights squirtle trainer')
         self.assertTrue(btrainer.fight(strainer))
+        self.dbg('Resetting squirtle and bulbasaur trainers')
         btrainer.reset()
         strainer.reset()
+        self.dbg('charmander trainer fights bulbasaur trainer')
         self.assertTrue(ctrainer.fight(btrainer))
+        self.dbg('Resetting charmander and bulbasaur trainers')
         btrainer.reset()
         ctrainer.reset()
+        self.dbg('squirtle trainer fights charmander trainer')
         self.assertTrue(strainer.fight(ctrainer))
 
 
-class TestWorkerFunctions(unittest.TestCase):
+# @unittest.skip('Skipping Worker Function Test')
+class TestWorkerFunctions(unittest.TestCase, Loggable):
     """This class tests the Big Factorial Class"""
     samplelevels = [[4, 2, 3], [2, 2], [3, 3, 3], [2, 5, 4]]
 
@@ -235,25 +255,17 @@ class TestWorkerFunctions(unittest.TestCase):
         types = list(typemodifiertable)
         self.assertEqual(types, list(typemodifiertable.index))
 
+
+# @unittest.skip('Skipping simulation Test')
+class TestSimulation(unittest.TestCase, Loggable):
+    def test_results(self):
+        vcb_indices = [2, 6, 11]  # Venusaur, Charizard, Blastoise
+        pds = PokeDataSimulation(vcb_indices)
+        pds.run_simulation()
+
+        self.assertEqual(pds.results[0]['Winner'].pokemon[0].name, 'Charizard')
+        self.assertEqual(pds.results[1]['Winner'].pokemon[0].name, 'Venusaur')
+        self.assertEqual(pds.results[2]['Winner'].pokemon[0].name, 'Blastoise')
+
 if __name__ == "__main__":
     unittest.main()
-
-
-"""
-pds = PokeDataSimulation("test")
-pds.runSimulation()
-
-db = sqlite3.connect("pokedex.sqlite")
-resultstable = pd.read_sql_query("SELECT * FROM test_results", db,index_col="caseidx")
-print(resultstable)
-indexlookup = pd.read_sql_query("SELECT * FROM test_indexLookup", db,index_col="FactorialIdx")
-print(indexlookup)
-
-
-for i in resultstable.index:
-    case = pds.experiment.get_case_from_index(i)
-    middle = int(len(case)/2)
-    print([pds.pokegen([pds.pokemonIndices[case[c]]])[0].name for c in case[:middle]],\
-          'vs', [pds.pokegen([pds.pokemonIndices[case[c]]])[0].name for c in case[middle:]])
-
-"""
