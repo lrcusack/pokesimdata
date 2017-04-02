@@ -13,3 +13,8 @@ class Loggable:
     def dbg(cls, msg='', *args, **kwargs):
         msg = cls.format_msg(msg)
         logging.debug(msg, *args, **kwargs)
+
+    @classmethod
+    def info(cls, msg='', *args, **kwargs):
+        msg = cls.format_msg(msg)
+        logging.info(msg, *args, **kwargs)
