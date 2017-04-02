@@ -85,7 +85,13 @@ class Pokemon(Loggable):
         else:
             type2 = self.type[1]
         return {'name': self.name, 'type1': type1, 'type2': type2, "hp": self.hp, "maxhp": self.maxhp,
-                "atk": self.attack, "def": self.defense, "spatk": self.spatk, "spdef": self.spdef, "speed": self.speed}
+                "attack": self.attack, "defense": self.defense, "spatk": self.spatk, "spdef": self.spdef,
+                "speed": self.speed}
+
+    @classmethod
+    def from_dict(cls, d, calcstat=True):
+        return cls(d['name'], d['type1'], d['type2'], d['maxhp'], d['attack'], d['defense'],
+                   d['spatk'], d['spdef'], d['speed'], calcstat=calcstat)
 
     def __str__(self):
         return str(self.to_dict())
@@ -116,7 +122,7 @@ class Pokemon(Loggable):
 
     def __init__(self, name, type1, type2, hp,
                  attack, defense, spatk, spdef, speed,
-                 level=0, iv=0, ev=0):
+                 level=0, iv=0, ev=0, calcstat=True):
         """ Construct a Pokemon
 
         Keyword arguments:
@@ -138,16 +144,29 @@ class Pokemon(Loggable):
             ev = self.standardEV
         self.name = name
         self.type = [x for x in [type1, type2] if x in self.allTypes]
-        self.maxhp = Pokemon.calculate_stat(hp, level, iv, ev, statname='hp')
-        self.hp = self.maxhp
-        self.attack = Pokemon.calculate_stat(attack, level, iv, ev, statname='attack')
-        self.defense = Pokemon.calculate_stat(defense, level, iv, ev, statname='defense')
-        self.spatk = Pokemon.calculate_stat(spatk, level, iv, ev, statname='spatk')
-        self.spdef = Pokemon.calculate_stat(spdef, level, iv, ev, statname='spdef')
-        self.speed = Pokemon.calculate_stat(speed, level, iv, ev, statname='speed')
+        if calcstat:
+            self.maxhp = Pokemon.calculate_stat(hp, level, iv, ev, statname='hp')
+            self.attack = Pokemon.calculate_stat(attack, level, iv, ev, statname='attack')
+            self.defense = Pokemon.calculate_stat(defense, level, iv, ev, statname='defense')
+            self.spatk = Pokemon.calculate_stat(spatk, level, iv, ev, statname='spatk')
+            self.spdef = Pokemon.calculate_stat(spdef, level, iv, ev, statname='spdef')
+            self.speed = Pokemon.calculate_stat(speed, level, iv, ev, statname='speed')
+        else:
+            self.maxhp = hp
+            self.attack = attack
+            self.defense = defense
+            self.spatk = spatk
+            self.spdef = spdef
+            self.speed = speed
         self.level = level
+        self.hp = self.maxhp
 
         self.dbg(str(self))
+
+    def compare(self, other):
+        return (other.name == self.name and other.type == self.type and other.maxhp == self.maxhp
+                and other.attack == self.attack and other.defense == self.defense and other.spatk == self.spatk
+                and other.spdef == self.spdef and other.speed == self.speed)
 
     @classmethod
     def from_data_frame(cls, poketable):
@@ -307,6 +326,22 @@ class Trainer(Loggable):
             dl.append(p.to_dict())
         return dl
 
+    @classmethod
+    def from_dict_list(cls, dict_list, calculate_stat):
+        pokemon = []
+        for d in dict_list:
+            pokemon.append(Pokemon.from_dict(d, calcstat=calculate_stat))
+        return cls(pokemon)
+
+    def compare(self, other):
+        match = True
+        if len(self.pokemon) == len(other.pokemon):
+            for i in range(len(self.pokemon)):
+                match = match and self.pokemon[i].compare(other.pokemon[i])
+        else:
+            match = False
+        return match
+
     def to_str_list(self):
         sl = []
         for p in self.pokemon:
@@ -427,7 +462,7 @@ class PokeDataSimulation(Loggable):
             winner = str(t2.to_str_list())
             loser = str(t1.to_str_list())
         toc = time()
-        self.info(winner + ' beat ' + loser + ' in ' + str(toc-tic) + 's')
+        self.dbg(winner + ' beat ' + loser + ' in ' + str(toc-tic) + 's')
         return record
 
     def record_result(self, result):
@@ -443,8 +478,8 @@ class PokeDataSimulation(Loggable):
             self.cleanup_case(case)
         toc = time()
         telapsed = toc - tic
-        self.info("sim time: " + str(telapsed) + 's')
-        self.info("avg time per case: " + str(telapsed/(len(self.idxrange)**2)))
+        self.dbg("sim time: " + str(telapsed) + 's')
+        self.dbg("avg time per case: " + str(telapsed/(len(self.idxrange)**2)))
 
     def save_results_to_tinydb(self, tinydbfname='PokeDataSimResults.json'):
         tic = time()
@@ -454,7 +489,7 @@ class PokeDataSimulation(Loggable):
         results_table.insert_multiple(self.results)
         tdb.close()
         toc = time()
-        self.info("db time: " + str(toc-tic) + 's')
+        self.dbg("db time: " + str(toc-tic) + 's')
 
 
 class FullFactPokeDataSim(PokeDataSimulation):

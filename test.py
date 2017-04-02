@@ -24,12 +24,12 @@ class TestPokemonClass(unittest.TestCase, Loggable):
         name = "Bulbasaur"
         type1 = "Grass"
         type2 = "Poison"
-        hp = 45  # should become 149
-        attack = 49  # should become 98
-        defense = 49  # should become 98
-        spatk = 65  # should become 114
-        spdef = 65  # should become 114
-        speed = 45  # should become 94
+        hp = 45  # should become 123
+        attack = 49  # should become 72
+        defense = 49  # should become 72
+        spatk = 65  # should become 88
+        spdef = 65  # should become 88
+        speed = 45  # should become 68
         bulba = Pokemon(name, type1, type2, hp, attack, defense, spatk, spdef, speed)
         self.checkPokemon(bulba, "Bulbasaur")
         self.assertEqual(bulba.type, ["Grass", "Poison"])
@@ -39,6 +39,20 @@ class TestPokemonClass(unittest.TestCase, Loggable):
         self.assertEqual(bulba.spatk, 88)
         self.assertEqual(bulba.spdef, 88)
         self.assertEqual(bulba.speed, 68)
+
+    def test_dict_operations(self):
+        name = "Bulbasaur"
+        type1 = "Grass"
+        type2 = "Poison"
+        hp = 45  # should become 123
+        attack = 49  # should become 72
+        defense = 49  # should become 72
+        spatk = 65  # should become 88
+        spdef = 65  # should become 88
+        speed = 45  # should become 68
+        bulba = Pokemon(name, type1, type2, hp, attack, defense, spatk, spdef, speed)
+        newbulba = Pokemon.from_dict(bulba.to_dict(), calcstat=False)
+        self.assertTrue(bulba.compare(newbulba))
 
     # @unittest.skip('Skipping Dynamic Creation Test')
     def test_dynamic_creation(self):
@@ -133,6 +147,14 @@ class TestTrainerClass(unittest.TestCase, Loggable):
 
         self.assertIsInstance(t.pokemon, list)
         self.assertIsInstance(t.pokemon[0], Pokemon)
+
+    def test_dict_operations(self):
+        bs = []
+        for i in range(6):
+            bs.append(Pokemon("Bulbasaur", "Grass", "Poison", 45, 49, 49, 65, 65, 45))
+        btrainer = Trainer(bs)
+        copytrainer = Trainer.from_dict_list(btrainer.to_dict_list(), calculate_stat=False)
+        self.assertTrue(btrainer.compare(copytrainer))
 
     # @unittest.skip('Skipping Trainer Selection Mechanics Test')
     def test_selectionmechanics(self):
