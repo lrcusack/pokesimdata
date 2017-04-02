@@ -1,29 +1,29 @@
-from loggable import Loggable
-from Pokemon import Pokemon
+from pokedatasim.loggable import Loggable
+from pokedatasim.pokemon import Pokemon
 import numpy as np
 
 
 class Trainer(Loggable):
     """ This class defines a Trainer """
 
+    def to_dict(self):
+        dl = []
+        for p in self.pokemon:
+            dl.append(p.to_dict())
+        return {'name': self.name, 'pokemon': dl}
+
     def __str__(self):
-        return str(self.pokemon)
+        return str(self.to_dict())
 
     def __repr__(self):
         return str(self)
 
-    def to_dict_list(self):
-        dl = []
-        for p in self.pokemon:
-            dl.append(p.to_dict())
-        return dl
-
     @classmethod
-    def from_dict_list(cls, dict_list, calculate_stat):
+    def from_dict(cls, d, calculate_stat):
         pokemon = []
-        for d in dict_list:
+        for d in d['pokemon']:
             pokemon.append(Pokemon.from_dict(d, calcstat=calculate_stat))
-        return cls(pokemon)
+        return cls(pokemon, name=d['name'])
 
     def compare(self, other):
         match = True
@@ -40,7 +40,7 @@ class Trainer(Loggable):
             sl.append(p.name)
         return sl
 
-    def __init__(self, pokemonlist):
+    def __init__(self, pokemonlist, name=''):
         """ Construct a Trainer
 
         Keyword arguments:
@@ -50,6 +50,7 @@ class Trainer(Loggable):
             pokemonlist = [pokemonlist]
         self.pokemon = pokemonlist
         self.active_pokemon_idx = 0
+        self.name = name
         self.dbg(str(self))
 
     def choose_next_pokemon(self):

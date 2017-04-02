@@ -1,11 +1,11 @@
-from loggable import Loggable
+from pokedatasim.loggable import Loggable
 import numpy as np
 from time import time
 from tinydb import TinyDB
-from Trainer import Trainer
-from Pokemon import Pokemon
-from sqlmethods import *
-from BigFullFactorial import BigFullFactorial
+from pokedatasim.trainer import Trainer
+from pokedatasim.pokemon import Pokemon
+from pokedatasim.sqlmethods import *
+from pokedatasim.bigfullfactorial import BigFullFactorial
 
 
 class PokeDataSimulation(Loggable):
@@ -31,11 +31,11 @@ class PokeDataSimulation(Loggable):
         t2 = case['t2']
         t1win = t1.fight(t2)
         if t1win:
-            record = {'Winner': t1.to_dict_list(), 'Loser': t2.to_dict_list()}
+            record = {'Winner': t1.to_dict(), 'Loser': t2.to_dict()}
             winner = str(t1.to_str_list())
             loser = str(t2.to_str_list())
         else:
-            record = {'Winner': t2.to_dict_list(), 'Loser': t1.to_dict_list()}
+            record = {'Winner': t2.to_dict(), 'Loser': t1.to_dict()}
             winner = str(t2.to_str_list())
             loser = str(t1.to_str_list())
         toc = time()
@@ -58,7 +58,7 @@ class PokeDataSimulation(Loggable):
         self.dbg("sim time: " + str(telapsed) + 's')
         self.dbg("avg time per case: " + str(telapsed/(len(self.idxrange)**2)))
 
-    def save_results_to_tinydb(self, tinydbfname='PokeDataSimResults.json'):
+    def save_results_to_tinydb(self, tinydbfname='PokeDataSim.json'):
         tic = time()
         tdb = TinyDB(tinydbfname)
         tdb.purge_table(self.simname)

@@ -1,5 +1,5 @@
-from loggable import Loggable
-from sqlmethods import *
+from pokedatasim.loggable import Loggable
+from pokedatasim.sqlmethods import *
 
 
 class Pokemon(Loggable):
@@ -23,9 +23,9 @@ class Pokemon(Loggable):
             type2 = None
         else:
             type2 = self.type[1]
-        return {'name': self.name, 'type1': type1, 'type2': type2, "hp": self.hp, "maxhp": self.maxhp,
-                "attack": self.attack, "defense": self.defense, "spatk": self.spatk, "spdef": self.spdef,
-                "speed": self.speed}
+        return {'name': self.name, 'level': self.level, 'type1': type1, 'type2': type2, "hp": self.hp,
+                "maxhp": self.maxhp, "attack": self.attack, "defense": self.defense, "spatk": self.spatk,
+                "spdef": self.spdef, "speed": self.speed}
 
     @classmethod
     def from_dict(cls, d, calcstat=True):
@@ -108,7 +108,7 @@ class Pokemon(Loggable):
                 and other.spdef == self.spdef and other.speed == self.speed)
 
     @classmethod
-    def from_data_frame(cls, poketable):
+    def from_data_frame(cls, poketable, level=0, iv=0, ev=0, calcstat=True):
         """Create a list of pokemon from a dataframe describing the pokemon
         this function does not work if you want to repeat pokemon..."""
         pokemonlist = []
@@ -123,7 +123,8 @@ class Pokemon(Loggable):
                 spatk = poketable.spatk[i]
                 spdef = poketable.spdef[i]
                 speed = poketable.speed[i]
-                pokemonlist.append(cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed))
+                pokemonlist.append(cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed,
+                                       level=level, iv=iv, ev=ev, calcstat=calcstat))
         else:
             poketable = poketable.to_dict()
             name = poketable["name"]
@@ -138,7 +139,8 @@ class Pokemon(Loggable):
             spatk = poketable["spatk"]
             spdef = poketable["spdef"]
             speed = poketable["speed"]
-            pokemonlist = cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed)
+            pokemonlist = cls(name, type1, type2, hp, attack, defense, spatk, spdef, speed,
+                              level=level, iv=iv, ev=ev, calcstat=calcstat)
         cls.dbg(str(pokemonlist))
         return pokemonlist
 

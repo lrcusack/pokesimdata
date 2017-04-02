@@ -1,4 +1,4 @@
-from loggable import Loggable
+from pokedatasim.loggable import Loggable
 import numpy as np
 
 
