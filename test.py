@@ -4,11 +4,6 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import unittest
-import logging
-
-
-def dbg(msg, *args, **kwargs):
-    logging.debug(msg, *args, **kwargs)
 
 
 class TestPokemonClass(unittest.TestCase, Loggable):
@@ -259,13 +254,13 @@ class TestWorkerFunctions(unittest.TestCase, Loggable):
 # @unittest.skip('Skipping simulation Test')
 class TestSimulation(unittest.TestCase, Loggable):
     def test_results(self):
-        vcb_indices = [2, 6, 11]  # Venusaur, Charizard, Blastoise
-        pds = PokeDataSimulation(vcb_indices)
+        vcb_indices = [2, 6, 11]  # venusaur charizard blastoise
+        pds = FullFactPokeDataSim(vcb_indices)
         pds.run_simulation()
 
-        self.assertEqual(pds.results[0]['Winner'].pokemon[0].name, 'Charizard')
-        self.assertEqual(pds.results[1]['Winner'].pokemon[0].name, 'Venusaur')
-        self.assertEqual(pds.results[2]['Winner'].pokemon[0].name, 'Blastoise')
+        self.assertEqual(pds.results[0]['Winner'][0]['name'], 'Charizard')
+        self.assertEqual(pds.results[1]['Winner'][0]['name'], 'Venusaur')
+        self.assertEqual(pds.results[2]['Winner'][0]['name'], 'Blastoise')
 
 if __name__ == "__main__":
     unittest.main()
