@@ -253,7 +253,7 @@ class TestWorkerFunctions(unittest.TestCase, Loggable):
 
 # @unittest.skip('Skipping simulation Test')
 class TestSimulation(unittest.TestCase, Loggable):
-    def test_results(self):
+    def test_fullfactsimresults(self):
         vcb_indices = [2, 6, 11]  # venusaur charizard blastoise
         pds = FullFactPokeDataSim(vcb_indices)
         pds.run_simulation()
@@ -261,6 +261,26 @@ class TestSimulation(unittest.TestCase, Loggable):
         self.assertEqual(pds.results[0]['Winner'][0]['name'], 'Charizard')
         self.assertEqual(pds.results[1]['Winner'][0]['name'], 'Venusaur')
         self.assertEqual(pds.results[2]['Winner'][0]['name'], 'Blastoise')
+
+    def test_trainerlistsimresults(self):
+        bs = []
+        cs = []
+        ss = []
+        for i in range(6):
+            bs.append(Pokemon("Bulbasaur", "Grass", "Poison", 45, 49, 49, 65, 65, 45))
+            cs.append(Pokemon("Charmander", "Fire", "", 39, 52, 43, 60, 50, 65))
+            ss.append(Pokemon('Squirtle', 'Water', '', 44, 48, 65, 50, 64, 43))
+        btrainer = Trainer(bs)
+        ctrainer = Trainer(cs)
+        strainer = Trainer(ss)
+        trainers = [btrainer, ctrainer, strainer]
+
+        pds = TrainerListPokeDataSim(trainers, 'trainerlisttest')
+        pds.run_simulation()
+
+        self.assertEqual(pds.results[0]['Winner'][0]['name'], 'Charmander')
+        self.assertEqual(pds.results[1]['Winner'][0]['name'], 'Bulbasaur')
+        self.assertEqual(pds.results[2]['Winner'][0]['name'], 'Squirtle')
 
 if __name__ == "__main__":
     unittest.main()

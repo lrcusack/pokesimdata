@@ -79,8 +79,13 @@ class Pokemon(Loggable):
     allTypes = set(specialTypes + physicalTypes)
 
     def to_dict(self):
-        return {'name': self.name, "hp": self.hp, "maxhp": self.maxhp, "atk": self.attack, "def": self.defense,
-                "spatk": self.spatk, "spdef": self.spdef, "speed": self.speed}
+        type1 = self.type[0]
+        if len(self.type) < 2:
+            type2 = None
+        else:
+            type2 = self.type[1]
+        return {'name': self.name, 'type1': type1, 'type2': type2, "hp": self.hp, "maxhp": self.maxhp,
+                "atk": self.attack, "def": self.defense, "spatk": self.spatk, "spdef": self.spdef, "speed": self.speed}
 
     def __str__(self):
         return str(self.to_dict())
@@ -403,6 +408,9 @@ class PokeDataSimulation(Loggable):
     def setup_case(self, caseidx):
         return {}
 
+    def cleanup_case(self, case):
+        pass
+
     def run_case(self, case):
         if not case:
             return None
@@ -430,7 +438,9 @@ class PokeDataSimulation(Loggable):
         tic = time()
         self.results = []
         for i in self.idxrange:
-            self.record_result(self.run_case(self.setup_case(i)))
+            case = self.setup_case(i)
+            self.record_result(self.run_case(case))
+            self.cleanup_case(case)
         toc = time()
         telapsed = toc - tic
         self.info("sim time: " + str(telapsed) + 's')
@@ -442,6 +452,7 @@ class PokeDataSimulation(Loggable):
         tdb.purge_table(self.simname)
         results_table = tdb.table(name=self.simname)
         results_table.insert_multiple(self.results)
+        tdb.close()
         toc = time()
         self.info("db time: " + str(toc-tic) + 's')
 
@@ -471,3 +482,26 @@ class FullFactPokeDataSim(PokeDataSimulation):
             t2idx = list(self.index_lookup.loc[caset2, 'PokemonIdx'])
 
             return {'t1': Trainer(self.pokegen(t1idx)), 't2': Trainer(self.pokegen(t2idx))}
+
+
+class TrainerListPokeDataSim(PokeDataSimulation):
+    def __init__(self, trainer_list, simname=""):
+        self.experiment = BigFullFactorial([len(trainer_list)] * 2)
+        super().__init__(self.experiment.idxrange, simname)
+        self.trainer_list = trainer_list
+
+    def setup_case(self, caseidx):
+        case = self.experiment.get_case_from_index(caseidx)
+        if case[0] == case[1]:
+            return None  # trainer 1 == trainer 2, no point in running
+        elif self.experiment.get_index_from_case([case[1], case[0]]) < caseidx:
+            return None  # Trainer 2 vs trainer 1 has already been simulated
+        else:
+            t1 = self.trainer_list[case[0]]
+            t2 = self.trainer_list[case[1]]
+            return {'t1': t1, 't2': t2}
+
+    def cleanup_case(self, case):
+        if case:
+            case['t1'].reset()
+            case['t2'].reset()
