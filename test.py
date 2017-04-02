@@ -1,8 +1,10 @@
-from pokedatasim import *
-from loggable import Loggable
-import pandas as pd
+from pokedatasim.simulation import *
+from pokedatasim.pokemon import Pokemon
+from pokedatasim.trainer import Trainer
+from pokedatasim.bigfullfactorial import BigFullFactorial
+from pokedatasim.sqlmethods import *
+from pokedatasim.loggable import Loggable
 import numpy as np
-import sqlite3
 import unittest
 
 
@@ -57,8 +59,7 @@ class TestPokemonClass(unittest.TestCase, Loggable):
     # @unittest.skip('Skipping Dynamic Creation Test')
     def test_dynamic_creation(self):
         # setup test variables
-        db = sqlite3.connect('pokedex.sqlite')
-        poketable = pd.read_sql_query("SELECT * FROM Pokemon", db, index_col="index")
+        poketable = load_pokemon_table_from_db()
         pikachuindex = 30  # pikachu
         vcb_indices = [2, 6, 11]  # Venusaur, Charizard, Blastoise
         checklist = ['Venusaur', 'Charizard', 'Blastoise']

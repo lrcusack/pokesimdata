@@ -1,4 +1,4 @@
-from pokedatasim import FullFactPokeDataSim
+from pokedatasim.simulation import FullFactPokeDataSim
 
 name = 'orig166_1v1'
 

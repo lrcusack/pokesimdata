@@ -1,4 +1,4 @@
-from pokedatasim import FullFactPokeDataSim
+from pokedatasim.simulation import FullFactPokeDataSim
 
 name = 'vcb_3v3'
 
