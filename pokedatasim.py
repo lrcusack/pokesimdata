@@ -2,6 +2,8 @@ from loggable import Loggable
 import pandas as pd
 import numpy as np
 import sqlite3
+from time import time
+from tinydb import TinyDB
 
 
 def load_type_modifier_table_from_db():
@@ -76,9 +78,12 @@ class Pokemon(Loggable):
                      'Rock', 'Bug', 'Poison', 'Ghost', 'Dragon', 'Dark', 'Steel', "Fairy"]
     allTypes = set(specialTypes + physicalTypes)
 
+    def to_dict(self):
+        return {'name': self.name, "hp": self.hp, "maxhp": self.maxhp, "atk": self.attack, "def": self.defense,
+                "spatk": self.spatk, "spdef": self.spdef, "speed": self.speed}
+
     def __str__(self):
-        return str({'name': self.name, "hp": self.hp, "maxhp": self.maxhp, "atk": self.attack, "def": self.defense,
-                    "spatk": self.spatk, "spdef": self.spdef, "speed": self.speed})
+        return str(self.to_dict())
 
     def __repr__(self):
         return str(self)
@@ -291,6 +296,18 @@ class Trainer(Loggable):
     def __repr__(self):
         return str(self)
 
+    def to_dict_list(self):
+        dl = []
+        for p in self.pokemon:
+            dl.append(p.to_dict())
+        return dl
+
+    def to_str_list(self):
+        sl = []
+        for p in self.pokemon:
+            sl.append(p.name)
+        return sl
+
     def __init__(self, pokemonlist):
         """ Construct a Trainer
 
@@ -374,52 +391,83 @@ class Trainer(Loggable):
             return False
 
 
-def clear_db_tables(db, tablenames):
-    cursor = db.cursor()
-    for tn in tablenames:
-        cursor.execute("SELECT * FROM sqlite_master WHERE type='table' and name=?", (tn,))
-        if cursor.fetchone():
-            cursor.execute("DROP TABLE ?", (tn,))
-
-
 class PokeDataSimulation(Loggable):
-    def __init__(self, pokemon_indices, simname="", n_pokemon_team=1):
-        if simname == "":
-            self.simname = "Sim_" + str(len(pokemon_indices)) + "pokemon_" + str(n_pokemon_team) + "perteam"
+    def __init__(self, idxrange, simname=''):
+        self.results = []
+        self.idxrange = idxrange
+        if simname == '':
+            self.simname = "NewSim"
         else:
             self.simname = simname
-        self.pokemon_indices = pokemon_indices
-        self.index_lookup = pd.DataFrame(self.pokemon_indices, columns=["PokemonIdx"])
-        self.experiment = BigFullFactorial([len(pokemon_indices)] * n_pokemon_team * 2)
-        self.n_pokemon_team = n_pokemon_team
-        self.pokegen = Pokemon.create_pokemon_generator(load_pokemon_table_from_db())
-        self.results = []
 
-    def run_case(self, caseidx):
-        case = self.experiment.get_case_from_index(caseidx)
-        caset1 = case[:self.n_pokemon_team]
-        caset2 = case[self.n_pokemon_team:]
-        if np.array_equal(caset1, caset2):
-            return None  # trainer 1 == trainer 2, no point in running
-        elif self.experiment.get_index_from_case(caset2+caset1) < caseidx:
-            return None  # Trainer 2 vs trainer 1 has already been simulated
+    def setup_case(self, caseidx):
+        return {}
+
+    def run_case(self, case):
+        if not case:
+            return None
+        tic = time()
+        t1 = case['t1']
+        t2 = case['t2']
+        t1win = t1.fight(t2)
+        if t1win:
+            record = {'Winner': t1.to_dict_list(), 'Loser': t2.to_dict_list()}
+            winner = str(t1.to_str_list())
+            loser = str(t2.to_str_list())
         else:
-            t1idx = list(self.index_lookup.loc[caset1, 'PokemonIdx'])
-            t2idx = list(self.index_lookup.loc[caset2, 'PokemonIdx'])
-
-            t1 = Trainer(self.pokegen(t1idx))
-            t2 = Trainer(self.pokegen(t2idx))
-            if t1.fight(t2):
-                record = {'Winner': t1, 'Loser': t2}
-            else:
-                record = {'Winner': t2, 'Loser': t1}
-            return record
+            record = {'Winner': t2.to_dict_list(), 'Loser': t1.to_dict_list()}
+            winner = str(t2.to_str_list())
+            loser = str(t1.to_str_list())
+        toc = time()
+        self.info(winner + ' beat ' + loser + ' in ' + str(toc-tic) + 's')
+        return record
 
     def record_result(self, result):
         if result:
             self.results.append(result)
 
     def run_simulation(self):
+        tic = time()
         self.results = []
-        for i in self.experiment.idxrange:
-            self.record_result(self.run_case(i))
+        for i in self.idxrange:
+            self.record_result(self.run_case(self.setup_case(i)))
+        toc = time()
+        telapsed = toc - tic
+        self.info("sim time: " + str(telapsed) + 's')
+        self.info("avg time per case: " + str(telapsed/(len(self.idxrange)**2)))
+
+    def save_results_to_tinydb(self, tinydbfname='PokeDataSimResults.json'):
+        tic = time()
+        tdb = TinyDB(tinydbfname)
+        tdb.purge_table(self.simname)
+        results_table = tdb.table(name=self.simname)
+        results_table.insert_multiple(self.results)
+        toc = time()
+        self.info("db time: " + str(toc-tic) + 's')
+
+
+class FullFactPokeDataSim(PokeDataSimulation):
+    def __init__(self, pokemon_indices, simname="", n_pokemon_team=1):
+        experiment = BigFullFactorial([len(pokemon_indices)] * n_pokemon_team * 2)
+        super().__init__(experiment.idxrange, simname)
+
+        self.pokemon_indices = pokemon_indices
+        self.index_lookup = pd.DataFrame(self.pokemon_indices, columns=["PokemonIdx"])
+        self.experiment = experiment
+        self.idxrange = self.experiment.idxrange
+        self.n_pokemon_team = n_pokemon_team
+        self.pokegen = Pokemon.create_pokemon_generator(load_pokemon_table_from_db())
+
+    def setup_case(self, caseidx):
+        case = self.experiment.get_case_from_index(caseidx)
+        caset1 = case[:self.n_pokemon_team]
+        caset2 = case[self.n_pokemon_team:]
+        if np.array_equal(caset1, caset2):
+            return None  # trainer 1 == trainer 2, no point in running
+        elif self.experiment.get_index_from_case(caset2 + caset1) < caseidx:
+            return None  # Trainer 2 vs trainer 1 has already been simulated
+        else:
+            t1idx = list(self.index_lookup.loc[caset1, 'PokemonIdx'])
+            t2idx = list(self.index_lookup.loc[caset2, 'PokemonIdx'])
+
+            return {'t1': Trainer(self.pokegen(t1idx)), 't2': Trainer(self.pokegen(t2idx))}
