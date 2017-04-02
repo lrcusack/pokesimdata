@@ -154,7 +154,7 @@ class TestTrainerClass(unittest.TestCase, Loggable):
         for i in range(6):
             bs.append(Pokemon("Bulbasaur", "Grass", "Poison", 45, 49, 49, 65, 65, 45))
         btrainer = Trainer(bs)
-        copytrainer = Trainer.from_dict_list(btrainer.to_dict_list(), calculate_stat=False)
+        copytrainer = Trainer.from_dict(btrainer.to_dict(), calculate_stat=False)
         self.assertTrue(btrainer.compare(copytrainer))
 
     # @unittest.skip('Skipping Trainer Selection Mechanics Test')
@@ -281,9 +281,9 @@ class TestSimulation(unittest.TestCase, Loggable):
         pds = FullFactPokeDataSim(vcb_indices)
         pds.run_simulation()
 
-        self.assertEqual(pds.results[0]['Winner'][0]['name'], 'Charizard')
-        self.assertEqual(pds.results[1]['Winner'][0]['name'], 'Venusaur')
-        self.assertEqual(pds.results[2]['Winner'][0]['name'], 'Blastoise')
+        self.assertEqual(pds.results[0]['Winner']['pokemon'][0]['name'], 'Charizard')
+        self.assertEqual(pds.results[1]['Winner']['pokemon'][0]['name'], 'Venusaur')
+        self.assertEqual(pds.results[2]['Winner']['pokemon'][0]['name'], 'Blastoise')
 
     def test_trainerlistsimresults(self):
         bs = []
@@ -301,9 +301,9 @@ class TestSimulation(unittest.TestCase, Loggable):
         pds = TrainerListPokeDataSim(trainers, 'trainerlisttest')
         pds.run_simulation()
 
-        self.assertEqual(pds.results[0]['Winner'][0]['name'], 'Charmander')
-        self.assertEqual(pds.results[1]['Winner'][0]['name'], 'Bulbasaur')
-        self.assertEqual(pds.results[2]['Winner'][0]['name'], 'Squirtle')
+        self.assertEqual(pds.results[0]['Winner']['pokemon'][0]['name'], 'Charmander')
+        self.assertEqual(pds.results[1]['Winner']['pokemon'][0]['name'], 'Bulbasaur')
+        self.assertEqual(pds.results[2]['Winner']['pokemon'][0]['name'], 'Squirtle')
 
 if __name__ == "__main__":
     unittest.main()
