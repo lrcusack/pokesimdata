@@ -4,7 +4,7 @@ from time import time
 from tinydb import TinyDB
 from pokedatasim.trainer import Trainer
 from pokedatasim.pokemon import Pokemon
-from pokedatasim.sqlmethods import *
+from pokedatasim.dataload import *
 from pokedatasim.bigfullfactorial import BigFullFactorial
 
 
@@ -79,7 +79,7 @@ class FullFactPokeDataSim(PokeDataSimulation):
         self.experiment = experiment
         self.idxrange = self.experiment.idxrange
         self.n_pokemon_team = n_pokemon_team
-        self.pokegen = Pokemon.create_pokemon_generator(load_pokemon_table_from_db())
+        self.pokegen = Pokemon.create_pokemon_generator(load_pokemon())
 
     def setup_case(self, caseidx):
         case = self.experiment.get_case_from_index(caseidx)

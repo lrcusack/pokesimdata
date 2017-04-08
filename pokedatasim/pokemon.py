@@ -1,5 +1,5 @@
 from pokedatasim.loggable import Loggable
-from pokedatasim.sqlmethods import *
+from pokedatasim.dataload import *
 
 
 class Pokemon(Loggable):
@@ -10,7 +10,7 @@ class Pokemon(Loggable):
     standardIV = 15
     # even distribution of EV across stats from http://bulbapedia.bulbagarden.net/wiki/Effort_values
     standardEV = round(510/6)
-    typeModifierTable = load_type_modifier_table_from_db()
+    typeModifierTable = load_type_modifier_table()
 
     specialTypes = ['Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Psychic']
     physicalTypes = ['Normal', 'Fighting', 'Flying', 'Ground',

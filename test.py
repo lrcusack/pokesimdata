@@ -2,7 +2,7 @@ from pokedatasim.simulation import *
 from pokedatasim.pokemon import Pokemon
 from pokedatasim.trainer import Trainer
 from pokedatasim.bigfullfactorial import BigFullFactorial
-from pokedatasim.sqlmethods import *
+from pokedatasim.dataload import *
 from pokedatasim.loggable import Loggable
 import numpy as np
 import unittest
@@ -59,7 +59,7 @@ class TestPokemonClass(unittest.TestCase, Loggable):
     # @unittest.skip('Skipping Dynamic Creation Test')
     def test_dynamic_creation(self):
         # setup test variables
-        poketable = load_pokemon_table_from_db()
+        poketable = load_pokemon()
         pikachuindex = 30  # pikachu
         vcb_indices = [2, 6, 11]  # Venusaur, Charizard, Blastoise
         checklist = ['Venusaur', 'Charizard', 'Blastoise']
@@ -263,13 +263,13 @@ class TestWorkerFunctions(unittest.TestCase, Loggable):
 
     def test_db_loading(self):
         # test load poketable
-        poketable = load_pokemon_table_from_db()
+        poketable = load_pokemon()
         self.assertEqual(list(poketable), ['num', 'name', 'type1', 'type2', 'total', 'hp', 'attack', 'defense',
                                            'spatk', 'spdef', 'speed', 'generation', 'legendary'])
         self.assertEqual(len(poketable), 800)
 
         # test load type modifier table
-        typemodifiertable = load_type_modifier_table_from_db()
+        typemodifiertable = load_type_modifier_table()
         types = list(typemodifiertable)
         self.assertEqual(types, list(typemodifiertable.index))
 
