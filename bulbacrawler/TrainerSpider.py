@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from pokedatasim.sqlmethods import load_pokemon_table_from_db
+from pokedatasim.dataload import load_pokemon_table_from_db
 from pokedatasim.pokemon import Pokemon
 from pokedatasim.trainer import Trainer
 from tinydb import TinyDB
